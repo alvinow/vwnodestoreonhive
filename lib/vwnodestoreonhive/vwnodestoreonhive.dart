@@ -28,8 +28,7 @@ class VwNodeStoreOnHive {
   final String appTitle;
   final String appversion;
 
-  static const String unsyncedRecordFieldname="unsyncedRecord";
-  static const String loggedInUser = "VwLoginResponse.loggedInUser";
+
 
   static Future<int> boxContentCount(String boxName) async {
     Box<dynamic> box = await Hive.openBox(boxName);
