@@ -1,5 +1,4 @@
 import 'package:hive_flutter/adapters.dart';
-import 'package:matrixclient2base/appconfig.dart';
 import 'package:matrixclient2base/modules/base/vwapicall/synctokenblock/synctokenblock.dart';
 import 'package:matrixclient2base/modules/base/vwapicall/vwapicallresponse/vwapicallresponse.dart';
 import 'package:matrixclient2base/modules/base/vwauthutil/vwauthutil.dart';
@@ -17,9 +16,20 @@ import 'dart:convert';
 import 'package:vwutil/modules/util/vwdateutil.dart';
 
 class VwNodeStoreOnHive {
-  VwNodeStoreOnHive({required this.boxName});
+  VwNodeStoreOnHive({
+    required this.boxName,
+    required this.graphqlServerAddress,
+    required this.appTitle,
+    required this.appversion
+  });
 
   final String boxName;
+  final String graphqlServerAddress;
+  final String appTitle;
+  final String appversion;
+
+  static const String unsyncedRecordFieldname="unsyncedRecord";
+  static const String loggedInUser = "VwLoginResponse.loggedInUser";
 
   static Future<int> boxContentCount(String boxName) async {
     Box<dynamic> box = await Hive.openBox(boxName);
@@ -151,7 +161,7 @@ class VwNodeStoreOnHive {
     return result;
   }
 
-  static Future<SyncTokenBlock?> getToken({required String loginSessionId,   required int count,required String apiCallId}) async {
+  static Future<SyncTokenBlock?> getToken({required String graphqlServerAddress, required String loginSessionId,   required int count,required String apiCallId}) async {
     SyncTokenBlock? returnValue;
     try {
       VwFieldValue fieldValue1 = VwFieldValue(
@@ -177,7 +187,7 @@ class VwNodeStoreOnHive {
 
         VwGraphQlServerResponse graphQlServerResponse =
         await VwGraphQlClient.httpPostGraphQl(
-            url: AppConfig.serverAddress, graphQlQuery: graphQlQuery);
+            url: graphqlServerAddress, graphQlQuery: graphQlQuery);
 
         if (graphQlServerResponse.apiCallResponse != null) {
          if(graphQlServerResponse.apiCallResponse!.responseStatusCode==200)
@@ -218,6 +228,7 @@ class VwNodeStoreOnHive {
       if(untokenizedCount>0) {
         SyncTokenBlock? syncTokenBlock =
         await VwNodeStoreOnHive.getToken(
+          graphqlServerAddress: this.graphqlServerAddress,
             loginSessionId: loginSessionId,
             count: untokenizedCount, apiCallId: "syncNode");
 
@@ -232,7 +243,10 @@ class VwNodeStoreOnHive {
               syncTokenBlock.tokenList.removeAt(0);
               currentNode.upsyncToken = currentToken;
               await VwNodeStoreOnHive(
-                  boxName: AppConfig.unsyncedRecordFieldname).pushRecord(
+                graphqlServerAddress: this.graphqlServerAddress,
+                  appTitle: this.appTitle,
+                  appversion: this.appversion,
+                  boxName: VwNodeStoreOnHive.unsyncedRecordFieldname).pushRecord(
                   currentNode);
             }
           }
@@ -292,7 +306,11 @@ class VwNodeStoreOnHive {
       VwRowData apiCallParam =
           VwRowData(timestamp: VwDateUtil.nowTimestamp(),recordId: Uuid().v4(), fields: fieldValueList);
 
-      VwLoginResponse ? loginResponse=await VwAuthUtil .getSavedLoggedInLoginResponseInLocal();
+      VwLoginResponse ? loginResponse=await VwAuthUtil .getSavedLoggedInLoginResponseInLocal(
+        loggedInUser: VwNodeStoreOnHive.loggedInUser,
+        appTitle: this.appTitle,
+        appVersion: this.appversion
+      );
 
 
 
@@ -303,7 +321,7 @@ class VwNodeStoreOnHive {
           parameter: apiCallParam);
 
       VwGraphQlServerResponse response = await VwGraphQlClient.httpPostGraphQl(
-          url: AppConfig.serverAddress, graphQlQuery: graphQlQuery);
+          url: this.graphqlServerAddress, graphQlQuery: graphQlQuery);
 
       /*
       if(response.httpResponse!=null && response.httpResponse!.statusCode==200 && response.apiCallResponse!=null && response.apiCallResponse!.valueResponseClassEncodedJson!=null && response.apiCallResponse!.valueResponseClassEncodedJson!.className=="VwNodeUpsyncResultPackage" )
