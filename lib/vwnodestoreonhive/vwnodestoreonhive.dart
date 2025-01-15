@@ -20,13 +20,17 @@ class VwNodeStoreOnHive {
     required this.boxName,
     required this.graphqlServerAddress,
     required this.appTitle,
-    required this.appversion
+    required this.appversion,
+    required this.unsyncedRecordFieldname,
+    required this.loggedInUser
   });
 
   final String boxName;
   final String graphqlServerAddress;
   final String appTitle;
   final String appversion;
+  final String unsyncedRecordFieldname;
+  final String loggedInUser;
 
 
 
@@ -75,9 +79,8 @@ class VwNodeStoreOnHive {
     List<int> selectedNodes = await this.getIndexByParentNodeIdAndDisplayName(
         parentNodeId: parentNodeId, displayName: displayName);
 
-    for (int la = 0; la < selectedNodes.length; la++) {
-      returnValue = await this.getRecord(selectedNodes.elementAt(la));
-      break;
+    if( selectedNodes.length>0) {
+      returnValue = await this.getRecord(selectedNodes.elementAt(0));
     }
 
     /*
@@ -242,10 +245,12 @@ class VwNodeStoreOnHive {
               syncTokenBlock.tokenList.removeAt(0);
               currentNode.upsyncToken = currentToken;
               await VwNodeStoreOnHive(
+                loggedInUser: this.loggedInUser,
+                unsyncedRecordFieldname: this.unsyncedRecordFieldname,
                 graphqlServerAddress: this.graphqlServerAddress,
                   appTitle: this.appTitle,
                   appversion: this.appversion,
-                  boxName: VwNodeStoreOnHive.unsyncedRecordFieldname).pushRecord(
+                  boxName: this.unsyncedRecordFieldname).pushRecord(
                   currentNode);
             }
           }
@@ -306,7 +311,7 @@ class VwNodeStoreOnHive {
           VwRowData(timestamp: VwDateUtil.nowTimestamp(),recordId: Uuid().v4(), fields: fieldValueList);
 
       VwLoginResponse ? loginResponse=await VwAuthUtil .getSavedLoggedInLoginResponseInLocal(
-        loggedInUser: VwNodeStoreOnHive.loggedInUser,
+        loggedInUser: this.loggedInUser,
         appTitle: this.appTitle,
         appVersion: this.appversion
       );
